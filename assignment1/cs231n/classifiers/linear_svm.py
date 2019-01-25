@@ -55,9 +55,6 @@ def svm_loss_vectorized(W, X, y, reg):
 
     Inputs and outputs are the same as svm_loss_naive.
     """
-    dW = np.zeros(W.shape)  # initialize the gradient as zero
-
-    num_classes = W.shape[1]
     num_train = X.shape[0]
 
     scores = X.dot(W)
