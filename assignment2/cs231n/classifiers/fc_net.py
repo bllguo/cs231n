@@ -186,7 +186,18 @@ class FullyConnectedNet(object):
         if self.normalization=='batchnorm':
             for bn_param in self.bn_params:
                 bn_param['mode'] = mode
-        scores = None
+
+        scores = X
+        caches = {}
+        for i in range(1, self.num_layers):
+            W = self.params['W' + str(i)]
+            b = self.params['b' + str(i)]
+            scores, caches['a' + str(i)] = affine_forward(scores, W, b)
+            scores, caches['relu' + str(i)] = relu_forward(scores)
+        scores, caches['a' + str(self.num_layers)] = affine_forward(
+            scores, self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)])
+
+
         ############################################################################
         # TODO: Implement the forward pass for the fully-connected net, computing  #
         # the class scores for X and storing them in the scores variable.          #
@@ -208,7 +219,17 @@ class FullyConnectedNet(object):
         if mode == 'test':
             return scores
 
-        loss, grads = 0.0, {}
+        grads = {}
+        reg_term = 0
+        loss, dout = softmax_loss(scores, y)
+        for i in range(self.num_layers, 0, -1):
+            if i != self.num_layers:
+                dout = relu_backward(dout, caches['relu' + str(i)])
+            dout, grads['W' + str(i)], grads['b' + str(i)] = affine_backward(dout, caches['a' + str(i)])
+            grads['W' + str(i)] += self.reg * caches['a' + str(i)][1]
+            reg_term += np.sum(caches['a' + str(i)][1] ** 2)
+
+        loss += .5 * self.reg * reg_term
         ############################################################################
         # TODO: Implement the backward pass for the fully-connected net. Store the #
         # loss in the loss variable and gradients in the grads dictionary. Compute #
