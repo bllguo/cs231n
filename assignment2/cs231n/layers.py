@@ -240,22 +240,17 @@ def layernorm_forward(x, gamma, beta, ln_param):
     - out: of shape (N, D)
     - cache: A tuple of values needed in the backward pass
     """
-    out, cache = None, None
+    cache = {}
     eps = ln_param.get('eps', 1e-5)
-    ###########################################################################
-    # TODO: Implement the training-time forward pass for layer norm.          #
-    # Normalize the incoming data, and scale and  shift the normalized data   #
-    #  using gamma and beta.                                                  #
-    # HINT: this can be done by slightly modifying your training-time         #
-    # implementation of  batch normalization, and inserting a line or two of  #
-    # well-placed code. In particular, can you think of any matrix            #
-    # transformations you could perform, that would enable you to copy over   #
-    # the batch norm code and leave it almost unchanged?                      #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    sample_mean = np.mean(x.T, axis=0)
+    sample_var = np.var(x.T, axis=0)
+    xhat = (x - sample_mean[:, np.newaxis]) / np.sqrt(sample_var[:, np.newaxis] + eps)
+    out = gamma * xhat + beta
+
+    cache['xhat'] = xhat
+    cache['var'] = sample_var + eps
+    cache['gamma'] = gamma
+
     return out, cache
 
 
@@ -275,19 +270,15 @@ def layernorm_backward(dout, cache):
     - dgamma: Gradient with respect to scale parameter gamma, of shape (D,)
     - dbeta: Gradient with respect to shift parameter beta, of shape (D,)
     """
-    dx, dgamma, dbeta = None, None, None
-    ###########################################################################
-    # TODO: Implement the backward pass for layer norm.                       #
-    #                                                                         #
-    # HINT: this can be done by slightly modifying your training-time         #
-    # implementation of batch normalization. The hints to the forward pass    #
-    # still apply!                                                            #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
-    return dx, dgamma, dbeta
+    dgamma = np.sum(dout * cache['xhat'], axis=0)
+    dbeta = np.sum(dout, axis=0)
+    dxhat = dout * cache['gamma']
+
+    D = dout.shape[1]
+    dx = (1 / np.sqrt(cache['var'])) / D * (
+            D*dxhat.T - cache['xhat'].T*np.sum(dxhat.T * cache['xhat'].T, axis=0) - np.sum(dxhat.T, axis=0))
+
+    return dx.T, dgamma, dbeta
 
 
 def dropout_forward(x, dropout_param):
