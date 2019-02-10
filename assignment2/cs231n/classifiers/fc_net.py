@@ -144,6 +144,11 @@ class FullyConnectedNet(object):
             b_name = 'b' + str(i+1)
             self.params[b_name] = np.zeros(all_dims[i + 1])
             self.params[W_name] = np.random.normal(0.0, weight_scale, (all_dims[i], all_dims[i + 1]))
+            if self.normalization == 'batchnorm' and i > 0:
+                gamma_name = 'gamma' + str(i)
+                beta_name = 'beta' + str(i)
+                self.params[gamma_name] = np.ones(all_dims[i])
+                self.params[beta_name] = np.zeros(all_dims[i])
 
         # When using dropout we need to pass a dropout_param dictionary to each
         # dropout layer so that the layer knows the dropout probability and the mode
@@ -193,6 +198,10 @@ class FullyConnectedNet(object):
             W = self.params['W' + str(i)]
             b = self.params['b' + str(i)]
             scores, caches['a' + str(i)] = affine_forward(scores, W, b)
+            if self.normalization=='batchnorm':
+                gamma = self.params['gamma' + str(i)]
+                beta = self.params['beta' + str(i)]
+                scores, caches['bn' + str(i)] = batchnorm_forward(scores, gamma, beta, self.bn_params[i-1])
             scores, caches['relu' + str(i)] = relu_forward(scores)
         scores, caches['a' + str(self.num_layers)] = affine_forward(
             scores, self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)])
@@ -225,6 +234,9 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers, 0, -1):
             if i != self.num_layers:
                 dout = relu_backward(dout, caches['relu' + str(i)])
+                if self.normalization == 'batchnorm':
+                    dout, grads['gamma'+str(i)], grads['beta'+str(i)] = batchnorm_backward(dout, caches['bn' + str(i)])
+
             dout, grads['W' + str(i)], grads['b' + str(i)] = affine_backward(dout, caches['a' + str(i)])
             grads['W' + str(i)] += self.reg * caches['a' + str(i)][1]
             reg_term += np.sum(caches['a' + str(i)][1] ** 2)
