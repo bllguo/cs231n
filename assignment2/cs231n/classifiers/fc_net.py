@@ -207,26 +207,10 @@ class FullyConnectedNet(object):
                 beta = self.params['beta' + str(i)]
                 scores, caches['bn' + str(i)] = layernorm_forward(scores, gamma, beta, self.bn_params[i-1])
             scores, caches['relu' + str(i)] = relu_forward(scores)
+            if self.use_dropout:
+                scores, caches['dropout' + str(i)] = dropout_forward(scores, self.dropout_param)
         scores, caches['a' + str(self.num_layers)] = affine_forward(
             scores, self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)])
-
-
-        ############################################################################
-        # TODO: Implement the forward pass for the fully-connected net, computing  #
-        # the class scores for X and storing them in the scores variable.          #
-        #                                                                          #
-        # When using dropout, you'll need to pass self.dropout_param to each       #
-        # dropout forward pass.                                                    #
-        #                                                                          #
-        # When using batch normalization, you'll need to pass self.bn_params[0] to #
-        # the forward pass for the first batch normalization layer, pass           #
-        # self.bn_params[1] to the forward pass for the second batch normalization #
-        # layer, etc.                                                              #
-        ############################################################################
-        pass
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
 
         # If test mode return early
         if mode == 'test':
@@ -237,6 +221,8 @@ class FullyConnectedNet(object):
         loss, dout = softmax_loss(scores, y)
         for i in range(self.num_layers, 0, -1):
             if i != self.num_layers:
+                if self.use_dropout:
+                    dout = dropout_backward(dout, caches['dropout' + str(i)])
                 dout = relu_backward(dout, caches['relu' + str(i)])
                 if self.normalization == 'batchnorm':
                     dout, grads['gamma'+str(i)], grads['beta'+str(i)] = batchnorm_backward(dout, caches['bn' + str(i)])
@@ -248,22 +234,5 @@ class FullyConnectedNet(object):
             reg_term += np.sum(caches['a' + str(i)][1] ** 2)
 
         loss += .5 * self.reg * reg_term
-        ############################################################################
-        # TODO: Implement the backward pass for the fully-connected net. Store the #
-        # loss in the loss variable and gradients in the grads dictionary. Compute #
-        # data loss using softmax, and make sure that grads[k] holds the gradients #
-        # for self.params[k]. Don't forget to add L2 regularization!               #
-        #                                                                          #
-        # When using batch/layer normalization, you don't need to regularize the scale   #
-        # and shift parameters.                                                    #
-        #                                                                          #
-        # NOTE: To ensure that your implementation matches ours and you pass the   #
-        # automated tests, make sure that your L2 regularization includes a factor #
-        # of 0.5 to simplify the expression for the gradient.                      #
-        ############################################################################
-        pass
-        ############################################################################
-        #                             END OF YOUR CODE                             #
-        ############################################################################
 
         return loss, grads
