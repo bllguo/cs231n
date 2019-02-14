@@ -373,15 +373,25 @@ def conv_forward_naive(x, w, b, conv_param):
       W' = 1 + (W + 2 * pad - WW) / stride
     - cache: (x, w, b, conv_param)
     """
-    out = None
-    ###########################################################################
-    # TODO: Implement the convolutional forward pass.                         #
-    # Hint: you can use the function np.pad for padding.                      #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    N, _, H, W = x.shape
+    F, _, HH, WW = w.shape
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    padded_x = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), 'constant', constant_values=0)
+    H_prime = int(1 + (H + 2*pad - HH) / stride)
+    W_prime = int(1 + (W + 2*pad - WW) / stride)
+    out = np.zeros((N, F, H_prime, W_prime))
+
+    for y in range(H_prime):
+        for x in range(W_prime):
+            for f in range(F):
+                conv_filter = w[f, :, :, :]
+                h_index = y + y*(stride-1)
+                w_index = x + x*(stride-1)
+                data = padded_x[:, :, h_index:(h_index+HH), w_index:(w_index+WW)]
+                out[:, f, y, x] = np.sum(np.multiply(conv_filter, data), axis=(1, 2, 3)) + b[f]
+
+
     cache = (x, w, b, conv_param)
     return out, cache
 
@@ -399,14 +409,27 @@ def conv_backward_naive(dout, cache):
     - dw: Gradient with respect to w
     - db: Gradient with respect to b
     """
-    dx, dw, db = None, None, None
-    ###########################################################################
-    # TODO: Implement the convolutional backward pass.                        #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    x, w, b, conv_param = cache
+    N, _, H, W = x.shape
+    F, _, HH, WW = w.shape
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    padded_x = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), 'constant', constant_values=0)
+    H_prime = int(1 + (H + 2 * pad - HH) / stride)
+    W_prime = int(1 + (W + 2 * pad - WW) / stride)
+
+    db = np.zeros(b.shape)
+    for i in range(F):
+        db[i] = np.sum(dout[:, i, :, :])
+
+    dw = np.zeros(w.shape)
+    for f in range(F):
+        for y in range(H_prime):
+            for x in range(W_prime):
+
+
+
+
     return dx, dw, db
 
 
