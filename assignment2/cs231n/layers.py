@@ -382,14 +382,14 @@ def conv_forward_naive(x, w, b, conv_param):
     W_prime = int(1 + (W + 2*pad - WW) / stride)
     out = np.zeros((N, F, H_prime, W_prime))
 
-    for y in range(H_prime):
-        for x in range(W_prime):
+    for i in range(H_prime):
+        for j in range(W_prime):
             for f in range(F):
                 conv_filter = w[f, :, :, :]
-                h_index = y + y*(stride-1)
-                w_index = x + x*(stride-1)
+                h_index = i*stride
+                w_index = j*stride
                 data = padded_x[:, :, h_index:(h_index+HH), w_index:(w_index+WW)]
-                out[:, f, y, x] = np.sum(np.multiply(conv_filter, data), axis=(1, 2, 3)) + b[f]
+                out[:, f, i, j] = np.sum(np.multiply(conv_filter, data), axis=(1, 2, 3)) + b[f]
 
 
     cache = (x, w, b, conv_param)
@@ -410,7 +410,7 @@ def conv_backward_naive(dout, cache):
     - db: Gradient with respect to b
     """
     x, w, b, conv_param = cache
-    N, _, H, W = x.shape
+    N, C, H, W = x.shape
     F, _, HH, WW = w.shape
     stride = conv_param['stride']
     pad = conv_param['pad']
@@ -424,10 +424,25 @@ def conv_backward_naive(dout, cache):
 
     dw = np.zeros(w.shape)
     for f in range(F):
-        for y in range(H_prime):
-            for x in range(W_prime):
+        for c in range(C):
+            for i in range(HH):
+                for j in range(WW):
+                    dw[f, c, i, j] = \
+                        np.sum(dout[:, f, :, :] *
+                               padded_x[:, c, i:i + H_prime*stride:stride, j:j + W_prime*stride:stride])
 
-
+    dx = np.zeros(x.shape)
+    for n in range(N):
+        dx_pad = np.pad(dx[n, :, :, :], ((0, 0), (pad, pad), (pad, pad)), 'constant')
+        for f in range(F):
+            for h_prime in range(H_prime):
+                for w_prime in range(W_prime):
+                    h1 = h_prime * stride
+                    h2 = h_prime * stride + HH
+                    w1 = w_prime * stride
+                    w2 = w_prime * stride + WW
+                    dx_pad[:, h1:h2, w1:w2] += w[f, :, :, :] * dout[n, f, h_prime, w_prime]
+        dx[n, :, :, :] = dx_pad[:, 1:-1, 1:-1]
 
 
     return dx, dw, db
