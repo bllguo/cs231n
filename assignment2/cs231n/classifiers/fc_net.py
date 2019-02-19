@@ -139,7 +139,7 @@ class FullyConnectedNet(object):
         self.params = {}
 
         all_dims = [input_dim] + hidden_dims + [num_classes]
-        for i in range(0, self.num_layers):
+        for i in range(self.num_layers):
             W_name = 'W' + str(i+1)
             b_name = 'b' + str(i+1)
             self.params[b_name] = np.zeros(all_dims[i + 1])
